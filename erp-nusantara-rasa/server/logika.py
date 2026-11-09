@@ -169,7 +169,7 @@ def evaluasi_so(conn: psycopg.Connection, customer_id: int, hitungan: dict) -> t
                                 f"{rp(kredit['piutang'] + hitungan['total'])}, melebihi limit {rp(kredit['limit_kredit'])}. "
                                 "Perlu persetujuan Divisi Finance (FAQ-TI-001).",
                       "izin": "so_setujui_kredit", "peran": "Divisi Finance"})
-    if d > BATAS_DISKON_MAKS:
+    if d > BATAS_DISKON_SUPERVISOR:
         perlu.append({"jenis": "diskon", "judul": f"Diskon tambahan {d:g}%".replace(".", ","),
                       "alasan": "Diskon tambahan di atas 1,5% sampai 3% wajib disetujui Manajer Penjualan (KBJ-PJL-002).",
                       "izin": "so_setujui_diskon", "peran": "Manajer Penjualan"})
