@@ -1,0 +1,109 @@
+@if (c(); as c) {
+  <app-judul [judul]="c.nama" [jejak]="[{ label: 'Penjualan' }, { label: 'Customer', tautan: '/penjualan/customer' }, { label: c.nama }]">
+    <app-status judul-ekstra [nilai]="c.segmen" />
+    @if (!c.aktif) { <app-status judul-ekstra nilai="Nonaktif" /> }
+    @if (c.kredit?.credit_hold) { <app-status judul-ekstra nilai="Credit hold" /> }
+    <ng-container meta>
+      <span class="kode">{{ c.kode }}</span>
+      <span><app-ikon n="toko" />{{ c.kota }}</span>
+      <span>Termin {{ c.termin_hari }} hari</span>
+      <span>Diskon standar {{ c.diskon_standar }}%</span>
+    </ng-container>
+    @if (auth.punya('customer_kelola', 'limit_kredit')) { <button class="btn" (click)="ubah()"><app-ikon n="edit" />Ubah</button> }
+    @if (auth.punya('so_buat') && c.aktif) {
+      <a class="btn-utama" routerLink="/penjualan/sales-order/baru" [queryParams]="{ customer: c.id }"><app-ikon n="plus" />Sales order</a>
+    }
+  </app-judul>
+
+  @if (c.kredit?.credit_hold) {
+    <div class="pita p-bahaya"><app-ikon n="tolak" />
+      <div class="pita-isi"><b>Credit hold</b><p>Ada faktur lewat jatuh tempo {{ c.kredit!.hari_lewat_maks }} hari. Sales order baru akan ditahan dan perlu keputusan Direktur Operasional.</p></div></div>
+  }
+
+  <div class="statistik">
+    <div class="stat"><span class="stat-label">Omzet 12 bulan</span><span class="stat-nilai">{{ omzet12() | rupiah: true }}</span><span class="stat-ket">{{ c.faktur_terakhir.length ? 'faktur terakhir ' : '' }}{{ c.faktur_terakhir[0]?.tanggal | tgl }}</span></div>
+    @if (c.kredit; as k) {
+      <div class="stat"><span class="stat-label">Piutang</span><span class="stat-nilai">{{ k.piutang | rupiah: true }}</span><span class="stat-ket">lewat jatuh tempo <b>{{ k.lewat_jatuh_tempo | rupiah: true }}</b></span></div>
+      <div class="stat"><span class="stat-label">Pemakaian limit</span><span class="stat-nilai" [class.t-bahaya]="k.pemakaian_persen > 100">{{ k.pemakaian_persen | angka: 0 }}%</span><span class="stat-ket">limit <b>{{ k.limit_kredit | rupiah: true }}</b></span></div>
+      <div class="stat"><span class="stat-label">Tahap penagihan</span><span class="stat-nilai stat-teks">{{ k.tahap }}</span><span class="stat-ket">tunggakan terlama {{ k.hari_lewat_maks }} hari</span></div>
+    } @else {
+      <div class="stat terkunci"><span class="stat-label"><app-ikon n="kunci" [ukuran]="13" />Piutang</span><span class="stat-nilai">—</span><span class="stat-ket">Tidak ada akses</span></div>
+    }
+  </div>
+
+  <div class="tab">
+    <button [class.aktif]="tab() === 'ringkasan'" (click)="tab.set('ringkasan')">Ringkasan</button>
+    <button [class.aktif]="tab() === 'faktur'" (click)="tab.set('faktur')">Faktur terakhir <span class="hitung">{{ c.faktur_terakhir.length }}</span></button>
+    @if (c.faktur_terbuka) { <button [class.aktif]="tab() === 'terbuka'" (click)="tab.set('terbuka')">Tagihan terbuka <span class="hitung">{{ c.faktur_terbuka.length }}</span></button> }
+  </div>
+
+  @switch (tab()) {
+    @case ('ringkasan') {
+      <div class="grid g-2-1">
+        <section class="panel">
+          <div class="panel-kepala"><h3>Omzet bulanan<span class="panel-sub">12 bulan</span></h3></div>
+          <div class="panel-isi"><app-grafik tipe="bar" [label]="grafik().label" [seri]="grafik().seri" formatNilai="rupiah" [tinggi]="230" [legenda]="false" /></div>
+        </section>
+        <section class="panel">
+          <div class="panel-kepala"><h3>Profil</h3></div>
+          <div class="panel-isi daftar-info">
+            <div><span>Alamat</span><span>{{ c.alamat }}</span></div>
+            <div><span>Kontak</span><span>{{ c.kontak }}</span></div>
+            <div><span>Telepon</span><span>{{ c.telepon }}</span></div>
+            <div><span>Limit kredit</span><b>{{ c.limit_kredit | rupiah }}</b></div>
+            <div><span>Status</span><span>{{ c.aktif ? 'Aktif' : 'Nonaktif' }}</span></div>
+          </div>
+        </section>
+      </div>
+      <div class="grid g-2">
+        <section class="panel">
+          <div class="panel-kepala"><h3>Produk yang dibeli<span class="panel-sub">12 bulan</span></h3></div>
+          <table class="tabel"><thead><tr><th>Produk</th><th class="r">Qty</th><th class="r">Nilai</th></tr></thead>
+            <tbody>@for (p of c.produk_favorit; track p.id) {
+              <tr><td><div class="sel-utama"><a [routerLink]="'/produksi/produk/' + p.id">{{ p.produk }}</a><small>{{ p.kategori }}</small></div></td>
+                <td class="r">{{ p.qty | angka }}</td><td class="r tebal">{{ p.nilai | rupiah: true }}</td></tr>
+            }</tbody></table>
+        </section>
+        <section class="panel">
+          <div class="panel-kepala"><h3>Sales order menunggu</h3></div>
+          @if (c.so_menunggu.length) {
+            <table class="tabel"><tbody>@for (s of c.so_menunggu; track s.id) {
+              <tr><td><a class="kode" [routerLink]="'/penjualan/sales-order/' + s.id">{{ s.nomor }}</a></td><td class="redup">{{ s.tanggal | tgl }}</td>
+                <td><app-status [nilai]="s.status" /></td><td class="r tebal">{{ s.total | rupiah }}</td></tr>
+            }</tbody></table>
+          } @else { <app-kosong ikon="centang2" judul="Tidak ada" isi="Semua sales order customer ini sudah diproses." /> }
+        </section>
+      </div>
+    }
+    @case ('faktur') {
+      <section class="panel">
+        <table class="tabel">
+          <thead><tr><th>Faktur</th><th>Tanggal</th><th>Jatuh tempo</th><th>Status</th><th class="r">Total</th></tr></thead>
+          <tbody>@for (f of c.faktur_terakhir; track f.id) {
+            <tr><td><a class="kode" [routerLink]="'/penjualan/faktur/' + f.id">{{ f.nomor }}</a></td><td class="redup">{{ f.tanggal | tgl }}</td>
+              <td class="redup">{{ f.jatuh_tempo | tgl }}</td><td><app-status [nilai]="f.status" /></td><td class="r tebal">{{ f.total | rupiah }}</td></tr>
+          }</tbody>
+        </table>
+        <div class="panel-kaki"><a class="tautan-aksi" routerLink="/penjualan/faktur">Semua faktur<app-ikon n="kanan" /></a></div>
+      </section>
+    }
+    @case ('terbuka') {
+      <section class="panel">
+        <div class="panel-kepala"><h3>Tagihan terbuka<span class="panel-sub">urut jatuh tempo</span></h3>
+          @if (auth.punya('pembayaran_catat') && c.faktur_terbuka?.length) {
+            <a class="btn" routerLink="/keuangan/pembayaran" [queryParams]="{ customer: c.id }"><app-ikon n="bayar" />Catat pembayaran</a> }</div>
+        <table class="tabel">
+          <thead><tr><th>Faktur</th><th>Jatuh tempo</th><th class="r">Total</th><th class="r">Sisa</th></tr></thead>
+          <tbody>
+            @for (f of c.faktur_terbuka ?? []; track f.id) {
+              <tr><td><a class="kode" [routerLink]="'/penjualan/faktur/' + f.id">{{ f.nomor }}</a></td>
+                <td class="nowrap"><span class="redup">{{ f.jatuh_tempo | tgl }}</span> @if (f.hari > 0) { <span class="kecil" [class.t-bahaya]="f.hari > 30"> · lewat {{ f.hari }} hari</span> }</td>
+                <td class="r redup">{{ f.total | rupiah }}</td><td class="r tebal">{{ f.sisa | rupiah }}</td></tr>
+            } @empty { <tr><td colspan="4"><app-kosong ikon="centang2" judul="Tidak ada tagihan terbuka" /></td></tr> }
+          </tbody>
+        </table>
+      </section>
+    }
+  }
+  <app-customer-form [(data)]="form" (tersimpan)="muat()" />
+}

@@ -1,0 +1,89 @@
+// Design token. Netral + satu warna merek; warna semantik hanya untuk status.
+:root {
+  --latar: #f6f7f8;
+  --permukaan: #ffffff;
+  --permukaan-2: #fafafb;
+  --permukaan-3: #f1f2f4;
+  --garis: #e3e5e8;
+  --garis-halus: #edeef1;
+  --garis-tegas: #cfd3d8;
+  --teks: #15181e;
+  --teks-2: #3b414c;
+  --teks-3: #69707c;
+  --teks-4: #9aa0aa;
+
+  --merek: #0e6b57;
+  --merek-hover: #0a5848;
+  --merek-lembut: #e8f2ef;
+  --merek-teks: #0b5d4c;
+  --fokus: rgba(14, 107, 87, 0.2);
+
+  --sukses: #16734a;
+  --sukses-bg: #eaf5ef;
+  --peringatan: #96580c;
+  --peringatan-bg: #fdf3e3;
+  --bahaya: #b42318;
+  --bahaya-bg: #fdeeec;
+  --info: #1e58ad;
+  --info-bg: #edf3fc;
+  --netral: #4a515d;
+  --netral-bg: #f0f1f3;
+  --ai: #5a4fcf;
+  --ai-bg: #f1f0fc;
+
+  // grafik: merek + abu + aksen kalem
+  --g1: #0e6b57;
+  --g2: #8a93a3;
+  --g3: #c08a2e;
+  --g4: #5679bf;
+  --g5: #ad5a6e;
+  --g6: #6c5fcf;
+
+  --sidebar: #fbfbfc;
+  --r: 10px;
+  --r-kecil: 6px;
+  --bayangan: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --bayangan-pop: 0 16px 40px -12px rgba(16, 24, 40, 0.22), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --font: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+.app-dark {
+  --latar: #0e1116;
+  --permukaan: #151920;
+  --permukaan-2: #12161c;
+  --permukaan-3: #1c212a;
+  --garis: #272d37;
+  --garis-halus: #1f242d;
+  --garis-tegas: #39404c;
+  --teks: #e8eaed;
+  --teks-2: #c4c9d1;
+  --teks-3: #8d94a1;
+  --teks-4: #666d7a;
+
+  --merek: #3fb597;
+  --merek-hover: #5cc6aa;
+  --merek-lembut: rgba(63, 181, 151, 0.13);
+  --merek-teks: #5cc6aa;
+  --fokus: rgba(63, 181, 151, 0.25);
+
+  --sukses: #4cc58b;
+  --sukses-bg: rgba(76, 197, 139, 0.12);
+  --peringatan: #e3a748;
+  --peringatan-bg: rgba(227, 167, 72, 0.12);
+  --bahaya: #f0857a;
+  --bahaya-bg: rgba(240, 133, 122, 0.12);
+  --info: #7fa8ec;
+  --info-bg: rgba(127, 168, 236, 0.12);
+  --netral: #b3b9c3;
+  --netral-bg: rgba(179, 185, 195, 0.1);
+  --ai: #9d94f0;
+  --ai-bg: rgba(157, 148, 240, 0.12);
+
+  --g1: #3fb597;
+  --g2: #6f7888;
+  --sidebar: #12161c;
+  --bayangan: none;
+  --bayangan-pop: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}

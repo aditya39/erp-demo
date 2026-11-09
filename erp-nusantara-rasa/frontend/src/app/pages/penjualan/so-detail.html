@@ -1,0 +1,148 @@
+@if (so(); as s) {
+  <app-judul [judul]="s.nomor" [jejak]="[{ label: 'Penjualan' }, { label: 'Sales order', tautan: '/penjualan/sales-order' }, { label: s.nomor }]">
+    <app-status judul-ekstra [nilai]="s.status" />
+    @if (s.sumber === 'asisten_ai') {
+      <span judul-ekstra class="badge" title="Draft disiapkan Asisten AI, diperiksa dan disimpan oleh {{ s.dibuat_oleh_nama }}">
+        <app-ikon n="asisten" [ukuran]="12" class="ikon-ai" />Dibuat lewat Asisten AI</span>
+    }
+    <ng-container meta>
+      <a [routerLink]="'/penjualan/customer/' + s.customer_id">{{ s.customer }}</a>
+      <span><app-ikon n="kalender" />{{ s.tanggal | tgl }}</span>
+      <span><app-ikon n="gudang" />{{ s.gudang }}</span>
+      <span><app-ikon n="user" />{{ s.dibuat_oleh_nama }}</span>
+    </ng-container>
+    @if (s.bisa_batal) { <button class="btn-bahaya" (click)="catatan = ''; galat.set(''); dialogBatal.set(true)">Batalkan</button> }
+    @if (s.faktur_id) { <a class="btn" [routerLink]="'/penjualan/faktur/' + s.faktur_id"><app-ikon n="faktur" />Buka faktur</a> }
+  </app-judul>
+
+  <app-tahapan [tahap]="tahapan()" />
+
+  <div class="grid g-record">
+    <div class="tumpuk">
+      @if (s.persetujuan.length) {
+        <section class="panel">
+          <div class="panel-kepala"><h3>Persetujuan<span class="panel-sub">berdasarkan kebijakan kredit & diskon</span></h3>
+            @if (untukSaya().length) { <span class="badge b-peringatan"><i></i>{{ untukSaya().length }} perlu keputusan Anda</span> }</div>
+          <div class="persetujuan-list">
+            @for (p of s.persetujuan; track p.jenis) {
+              <div class="persetujuan" [class]="'persetujuan ' + p.status" [class.untuk-saya]="p.bisa_saya">
+                <app-ikon [n]="p.status === 'menunggu' ? 'pasir' : p.status === 'disetujui' ? 'ok' : 'gagal'" />
+                <div class="persetujuan-isi">
+                  <div class="persetujuan-judul"><b>{{ p.judul }}</b>
+                    <app-status [nilai]="p.status" [label]="p.status === 'menunggu' ? p.peran : p.status === 'disetujui' ? 'Disetujui' : 'Ditolak'" /></div>
+                  <p>{{ p.alasan }}</p>
+                  @if (p.oleh) { <small>{{ p.status === 'disetujui' ? 'Disetujui' : 'Ditolak' }} oleh {{ p.oleh }} · {{ p.waktu | tgl: 'waktu' }}{{ p.catatan ? ' · “' + p.catatan + '”' : '' }}</small> }
+                  <div class="persetujuan-aksi">
+                    @if (p.bisa_saya) {
+                      <button class="btn-utama" (click)="buka(p, true)" [disabled]="!!proses()">Setujui</button>
+                      <button class="btn" (click)="buka(p, false)" [disabled]="!!proses()">Tolak</button>
+                    } @else if (p.status === 'menunggu') {
+                      <span class="samar kecil">Hanya {{ p.peran }} yang dapat memutuskan.</span>
+                    }
+                    @if (auth.punya('ai') && auth.punya('dokumen')) {
+                      <button class="tanya-asisten" (click)="tanyaKebijakan(p)"><app-ikon n="asisten" />Tanya Asisten soal aturannya</button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="panel">
+        <div class="panel-kepala"><h3>Baris pesanan</h3><span class="redup kecil">{{ s.item.length }} produk</span></div>
+        <table class="tabel">
+          <thead><tr><th>Produk</th><th class="r">Qty</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Subtotal</th>
+            @if (menunggu()) { <th class="r">Stok gudang</th> }</tr></thead>
+          <tbody>
+            @for (i of s.item; track i.id) {
+              <tr>
+                <td><div class="sel-utama"><a [routerLink]="'/produksi/produk/' + i.produk_id">{{ i.nama }}</a><small>{{ i.kode }}</small></div></td>
+                <td class="r">{{ i.qty | angka }} <span class="samar">{{ i.satuan }}</span></td>
+                <td class="r">{{ i.harga | rupiah }}</td>
+                <td class="r redup">{{ i.diskon_persen | angka: 1 }}%</td>
+                <td class="r tebal">{{ i.subtotal | rupiah }}</td>
+                @if (menunggu()) { <td class="r" [class.t-bahaya]="i.qty > (i.stok_gudang ?? 0)">{{ i.stok_gudang | angka }}</td> }
+              </tr>
+            }
+          </tbody>
+        </table>
+        <div class="total-blok">
+          <div><span>Subtotal sebelum diskon</span><b>{{ bruto() | rupiah }}</b></div>
+          <div><span>Diskon {{ s.diskon_standar }}% standar{{ s.diskon_tambahan ? ' + ' + (s.diskon_tambahan | angka: 1) + '% tambahan' : '' }}</span><b>−{{ bruto() - s.total | rupiah }}</b></div>
+          <div class="besar"><span>Total</span><b>{{ s.total | rupiah }}</b></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-kepala"><h3>Riwayat</h3></div>
+        <div class="panel-isi"><app-riwayat [data]="s.riwayat" /></div>
+      </section>
+    </div>
+
+    <aside class="tumpuk">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Customer</h3><a class="tautan-aksi" [routerLink]="'/penjualan/customer/' + s.customer_id">Profil<app-ikon n="kanan" /></a></div>
+        <div class="panel-isi daftar-info">
+          <div><span>Nama</span><b>{{ s.customer }}</b></div>
+          <div><span>Kode</span><span class="kode">{{ s.kode_customer }}</span></div>
+          <div><span>Segmen</span><span>{{ s.segmen }}</span></div>
+          <div><span>Termin</span><span>{{ s.termin_hari }} hari</span></div>
+          <div><span>Alamat</span><span>{{ s.alamat }}</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Kredit saat ini</h3><app-status [nilai]="s.kredit.credit_hold ? 'Credit hold' : s.kredit.tahap" /></div>
+        <div class="panel-isi">
+          <div class="kredit-angka">
+            <div><span>Piutang</span><b>{{ s.kredit.piutang | rupiah: true }}</b></div>
+            <div><span>Limit</span><b>{{ s.kredit.limit_kredit | rupiah: true }}</b></div>
+          </div>
+          <div class="meter" [class.bahaya]="s.kredit.pemakaian_persen > 100" [class.waspada]="s.kredit.pemakaian_persen > 80 && s.kredit.pemakaian_persen <= 100">
+            <i [style.width.%]="s.kredit.pemakaian_persen > 100 ? 100 : s.kredit.pemakaian_persen"></i></div>
+          <div class="kredit-bawah"><span>{{ s.kredit.pemakaian_persen | angka: 0 }}% terpakai</span>
+            <span>Tunggakan terlama <b [class.t-bahaya]="s.kredit.hari_lewat_maks > 30">{{ s.kredit.hari_lewat_maks }} hari</b></span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Dokumen terkait</h3></div>
+        <div class="dok-terkait">
+          <div class="dt"><app-ikon n="so" /><span><b>{{ s.nomor }}</b><small>Sales order · dokumen ini</small></span></div>
+          @if (s.faktur; as f) {
+            <a [routerLink]="'/penjualan/faktur/' + f.id"><app-ikon n="faktur" /><span><b>{{ f.nomor }}</b><small>Faktur · {{ f.total | rupiah }}</small></span><app-status [nilai]="f.status" /></a>
+            @if (auth.punya('piutang') && f.terbayar > 0) {
+              <a [routerLink]="'/penjualan/faktur/' + f.id"><app-ikon n="bayar" /><span><b>Pembayaran</b><small>{{ f.terbayar | rupiah }} diterima</small></span></a>
+            }
+          } @else {
+            <div class="dt"><app-ikon n="faktur" /><span><b>Faktur</b><small>Belum diterbitkan</small></span></div>
+          }
+        </div>
+      </section>
+      @if (s.catatan) {
+        <section class="panel"><div class="panel-kepala"><h3>Catatan</h3></div><div class="panel-isi redup">{{ s.catatan }}</div></section>
+      }
+    </aside>
+  </div>
+
+  <p-dialog [header]="dialog()?.judul ?? ''" [visible]="!!dialog()" (visibleChange)="!$event && dialog.set(null)" [modal]="true" [style]="{ width: '480px' }" appendTo="body">
+    <p class="dialog-sub">{{ dialog()?.setuju ? 'Keputusan dicatat di riwayat dokumen beserta nama Anda.' : 'Sales order akan berstatus Ditolak dan fakturnya tidak dapat diterbitkan.' }}</p>
+    <label class="isian">{{ dialog()?.setuju ? 'Catatan (opsional)' : 'Alasan penolakan' }}
+      <textarea rows="3" [(ngModel)]="catatan" [placeholder]="dialog()?.setuju ? 'mis. Komitmen pelunasan 50% minggu depan' : 'Wajib diisi'"></textarea>
+    </label>
+    @if (galat()) { <div class="galat-form" style="margin-top: 12px"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+    <div class="dialog-aksi">
+      <button class="btn" (click)="dialog.set(null)">Batal</button>
+      <button [class]="dialog()?.setuju ? 'btn-utama' : 'btn-bahaya'" (click)="putuskan()" [disabled]="!!proses()">{{ dialog()?.setuju ? 'Setujui' : 'Tolak' }}</button>
+    </div>
+  </p-dialog>
+
+  <p-dialog header="Batalkan sales order" [visible]="dialogBatal()" (visibleChange)="dialogBatal.set($event)" [modal]="true" [style]="{ width: '460px' }" appendTo="body">
+    <label class="isian">Alasan pembatalan<textarea rows="3" [(ngModel)]="catatan" placeholder="mis. Customer membatalkan pesanan"></textarea></label>
+    @if (galat()) { <div class="galat-form" style="margin-top: 12px"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+    <div class="dialog-aksi">
+      <button class="btn" (click)="dialogBatal.set(false)">Kembali</button>
+      <button class="btn-bahaya" (click)="batal()">Batalkan sales order</button>
+    </div>
+  </p-dialog>
+}

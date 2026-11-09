@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "erp": {
+      "command": "python",
+      "args": ["-m", "asisten.mcp_server"],
+      "env": { "ASISTEN_PENGGUNA": "${ASISTEN_PENGGUNA:-budi}" }
+    }
+  }
+}

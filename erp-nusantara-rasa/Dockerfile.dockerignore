@@ -1,0 +1,14 @@
+# Build context = folder workshop. Hanya file yang dibutuhkan image yang dikirim ke Docker.
+*
+!erp-nusantara-rasa/requirements.txt
+!erp-nusantara-rasa/server/
+!erp-nusantara-rasa/frontend/
+erp-nusantara-rasa/frontend/node_modules/
+erp-nusantara-rasa/frontend/dist/
+erp-nusantara-rasa/frontend/.angular/
+!kit/asisten-erp-ai/asisten/
+!kit/asisten-erp-ai/dokumen/
+!kit/asisten-erp-ai/rekaman/
+**/__pycache__/
+**/.env
+**/.kunci-sesi

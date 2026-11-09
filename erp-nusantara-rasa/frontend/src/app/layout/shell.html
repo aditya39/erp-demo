@@ -1,0 +1,116 @@
+<div class="app" [class.sidebar-ringkas]="ringkas()" [class.ai-buka]="ai.terbuka()">
+  <nav class="sidebar" aria-label="Navigasi utama">
+    <a class="ruang-kerja" routerLink="/" [pTooltip]="ringkas() ? 'Nusantara Rasa' : ''" tooltipPosition="right">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3.5c3.7 2.9 5.8 6.2 5.8 9.6 0 3.8-2.6 6.8-5.8 7.4-3.2-.6-5.8-3.6-5.8-7.4 0-3.4 2.1-6.7 5.8-9.6Z" /><path d="M12 8.5v12" /><path d="M12 13l2.8-2.2M12 16.6l-2.8-2.2" />
+        </svg>
+      </span>
+      <span class="ruang-teks"><b>Nusantara Rasa</b><small>ERP · {{ auth.meta()?.periode?.akhir | bulan }}</small></span>
+    </a>
+    <button class="cari-sidebar" (click)="bukaCari()" [pTooltip]="ringkas() ? 'Cari (⌘K)' : ''" tooltipPosition="right">
+      <app-ikon n="cari" [ukuran]="15" /><span>Cari…</span><kbd>⌘K</kbd>
+    </button>
+
+    <div class="nav">
+      @for (g of menu(); track g.judul) {
+        @if (g.judul) { <div class="nav-grup">{{ g.judul }}</div> }
+        @for (i of g.item; track i.tautan) {
+          <a class="nav-item" [routerLink]="i.tautan" routerLinkActive="aktif" [routerLinkActiveOptions]="{ exact: !!i.exact }"
+             [pTooltip]="ringkas() ? i.label : ''" tooltipPosition="right">
+            <app-ikon [n]="i.ikon" /><span>{{ i.label }}</span>
+            @if (hitungMenu(i.tautan); as h) { <em class="hitung" [class.penting]="h.penting">{{ h.n }}</em> }
+          </a>
+        }
+      }
+    </div>
+
+    <div class="sidebar-bawah">
+      <button class="pengguna-btn" (click)="menuU.toggle($event)">
+        <app-avatar [nama]="auth.user()?.nama ?? '?'" />
+        <span class="pengguna-teks"><b>{{ auth.user()?.nama }}</b><small>{{ auth.user()?.jabatan }}</small></span>
+        <app-ikon n="pilih" [ukuran]="15" />
+      </button>
+      <p-menu #menuU [model]="menuUser()" [popup]="true" appendTo="body">
+        <ng-template #item let-item>
+          <a class="p-menu-item-link"><app-ikon [n]="item.icon" [ukuran]="15" /><span>{{ item.label }}</span></a>
+        </ng-template>
+      </p-menu>
+    </div>
+  </nav>
+
+  <div class="utama">
+    <header class="topbar">
+      <button class="btn-ikon" (click)="tampilan.alihSidebar()" aria-label="Ringkas sidebar"><app-ikon n="sidebar" /></button>
+      <nav class="remah" aria-label="Breadcrumb">
+        @for (r of jejak.remah(); track r.label; let akhir = $last) {
+          @if (r.tautan && !akhir) { <a [routerLink]="r.tautan">{{ r.label }}</a> } @else { <span>{{ r.label }}</span> }
+          @if (!akhir) { <app-ikon n="kanan" /> }
+        }
+      </nav>
+      <div class="topbar-kanan">
+        <span class="status-koneksi" [class.offline]="!tampilan.online()"
+              [pTooltip]="tampilan.online() ? '' : 'Tanpa internet. Asisten lokal tetap berjalan.'" tooltipPosition="bottom">
+          <i></i>{{ tampilan.online() ? 'Online' : 'Offline' }}
+        </span>
+        <button class="btn-ikon" (click)="muatNotif(); popNotif.toggle($event)" aria-label="Notifikasi">
+          <app-ikon n="bel" />
+          @if (notif().length) { <span class="titik-notif">{{ notif().length }}</span> }
+        </button>
+        <p-popover #popNotif appendTo="body">
+          <div class="notif">
+            <div class="notif-head"><b>Notifikasi</b><span>{{ notif().length }} item</span></div>
+            @for (n of notif(); track $index) {
+              <button class="notif-item" [class]="'notif-item ' + n.tingkat" (click)="buka(n, popNotif)">
+                <app-ikon [n]="ikonNotif(n)" />
+                <span><b>{{ n.judul }}</b><small>{{ n.isi }}</small></span>
+              </button>
+            } @empty {
+              <div class="notif-kosong">Tidak ada notifikasi.</div>
+            }
+          </div>
+        </p-popover>
+        @if (auth.punya('ai')) {
+          <button class="btn btn-asisten" [class.aktif]="ai.terbuka()" (click)="ai.alih()">
+            <app-ikon n="asisten" /><span>Asisten</span><kbd>⌘J</kbd>
+          </button>
+        }
+      </div>
+    </header>
+
+    <main class="konten"><div class="konten-isi"><router-outlet /></div></main>
+  </div>
+
+  <app-panel-ai />
+</div>
+
+<p-dialog [visible]="cariBuka()" (visibleChange)="cariBuka.set($event)" [modal]="true" [showHeader]="false" [dismissableMask]="true"
+          [style]="{ width: '600px', top: '-14vh' }" styleClass="dialog-cari" appendTo="body">
+  <div class="cari">
+    <div class="cari-input">
+      <app-ikon n="cari" [ukuran]="18" />
+      <input #kotakCari [ngModel]="q()" (ngModelChange)="ketik($event)" (keydown)="navCari($event)"
+             placeholder="Cari produk, customer, nomor faktur atau SO, menu…" />
+    </div>
+    <div class="cari-hasil">
+      @for (g of grupHasil(); track g.jenis) {
+        <div class="cari-grup">{{ g.jenis === 'Halaman' ? 'Menu' : g.jenis }}</div>
+        @for (x of g.isi; track x.h.tautan + x.h.judul) {
+          <button class="cari-baris" [class.pilih]="pilih() === x.i" (mouseenter)="pilih.set(x.i)" (click)="ke(x.h)">
+            <app-ikon [n]="ikonJenis(x.h.jenis)" [ukuran]="15" />
+            <span class="cari-teks"><b>{{ x.h.judul }}</b><small>{{ x.h.sub }}</small></span>
+            <app-ikon class="cari-enter" n="enter" [ukuran]="14" />
+          </button>
+        }
+      } @empty {
+        <div class="cari-kosong">Tidak ada hasil untuk “{{ q() }}”.</div>
+      }
+    </div>
+    <div class="cari-kaki">
+      <span><kbd>↑↓</kbd>pilih</span><span><kbd>↵</kbd>buka</span><span><kbd>Esc</kbd>tutup</span>
+      @if (auth.punya('ai')) {
+        <button class="tanya-asisten" (click)="tanyaAIDariCari()"><app-ikon n="asisten" />{{ q().trim() ? 'Tanyakan ke Asisten' : 'Buka Asisten' }}</button>
+      }
+    </div>
+  </div>
+</p-dialog>

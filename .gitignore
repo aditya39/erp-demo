@@ -1,0 +1,23 @@
+# Rahasia lokal
+.env
+.env.local
+**/.kunci-sesi
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Frontend
+erp-nusantara-rasa/frontend/node_modules/
+erp-nusantara-rasa/frontend/dist/
+erp-nusantara-rasa/frontend/.angular/
+
+# Rekaman jawaban AI dan hasil QA lokal (dry-run, screenshot)
+**/rekaman/*.json
+qa-hasil/*
+!qa-hasil/.gitkeep
+.playwright-mcp/
+
+.DS_Store

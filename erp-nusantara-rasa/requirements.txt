@@ -1,0 +1,7 @@
+# Backend ERP + paket asisten AI dari kit (dependensi yang sama, versi dikunci sama dengan
+# ../kit/asisten-erp-ai/requirements.txt; diuji 28-10-2026, Python 3.10+)
+fastapi==0.162.0
+uvicorn==0.54.0
+psycopg[binary]==3.3.6
+python-dotenv==1.2.4
+openai==3.40.0

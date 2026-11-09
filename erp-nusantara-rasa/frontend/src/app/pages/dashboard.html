@@ -1,0 +1,141 @@
+<app-judul judul="Ringkasan">
+  <ng-container meta>
+    <span>{{ d()?.bulan | bulan }}</span>
+    <span><app-ikon n="jam" />Data per {{ auth.meta()?.tanggal_sistem | tgl }}</span>
+  </ng-container>
+  @if (auth.punya('ai')) { <button class="btn" (click)="ai.buka()"><app-ikon n="asisten" class="ikon-ai" />Tanya Asisten</button> }
+  @if (auth.punya('so_buat')) { <a class="btn-utama" routerLink="/penjualan/sales-order/baru"><app-ikon n="plus" />Sales order</a> }
+</app-judul>
+
+@if (muat()) {
+  <div class="statistik">@for (i of [1, 2, 3, 4]; track i) { <div class="stat"><span class="stat-label">&nbsp;</span><span class="stat-nilai kerangka">&nbsp;</span><span class="stat-ket">&nbsp;</span></div> }</div>
+} @else {
+  <div class="statistik">
+    @for (k of kartu(); track k.kode) {
+      <div class="stat">
+        <span class="stat-label">{{ k.label }}</span>
+        <span class="stat-nilai">{{ k.format === 'rupiah' ? (k.nilai | rupiah: true) : (k.nilai | angka) }}</span>
+        <span class="stat-ket">
+          @if (k.ubah !== undefined) { <app-delta [nilai]="k.ubah" /> vs {{ d()?.bulan_lalu | bulan }} }
+          @else if (k.sub_nilai !== undefined) { {{ k.sub }} <b>{{ k.sub_nilai | rupiah: true }}</b> }
+          @else { {{ k.sub }} }
+        </span>
+      </div>
+    }
+    @for (t of d()?.terkunci ?? []; track t) {
+      <div class="stat terkunci">
+        <span class="stat-label"><app-ikon n="kunci" [ukuran]="13" />{{ labelTerkunci[t] }}</span>
+        <span class="stat-nilai">—</span>
+        <span class="stat-ket">Tidak ada akses</span>
+      </div>
+    }
+  </div>
+
+  <div class="grid g-2-1">
+    @if (d()?.omzet_bulanan) {
+      <section class="panel">
+        <div class="panel-kepala"><h3>Omzet<span class="panel-sub">12 bulan terakhir, setelah diskon</span></h3>
+          <a class="tautan-aksi" routerLink="/penjualan/laporan">Laporan<app-ikon n="kanan" /></a></div>
+        <div class="panel-isi"><app-grafik tipe="bar" [label]="omzet().label" [seri]="omzet().seri" formatNilai="rupiah" [tinggi]="248" [legenda]="false" /></div>
+      </section>
+    }
+    <section class="panel">
+      <div class="panel-kepala"><h3>Perlu tindakan</h3>@if (insight().length) { <span class="badge">{{ insight().length }}</span> }</div>
+      <div class="tugas-list">
+        @for (i of insight(); track i.judul) {
+          <div class="tugas" [class]="'tugas t-' + i.tingkat">
+            <app-ikon [n]="i.ikon" class="tugas-ikon" />
+            <div class="tugas-isi">
+              @if (i.tautan) { <a [routerLink]="i.tautan">{{ i.judul }}</a> } @else { <b>{{ i.judul }}</b> }
+              <small>{{ i.isi }}</small>
+            </div>
+            @if (i.aksi && i.tautan) { <a class="btn" [routerLink]="i.tautan">{{ i.aksi }}</a> }
+            @else if (i.tanya) { <button class="tanya-asisten" (click)="ai.tanya(i.tanya)"><app-ikon n="asisten" />Tanya</button> }
+          </div>
+        } @empty {
+          <app-kosong ikon="centang2" judul="Tidak ada yang perlu ditindaklanjuti" />
+        }
+      </div>
+    </section>
+  </div>
+
+  <div class="grid g-3">
+    @if (d()?.produk_teratas) {
+      <section class="panel">
+        <div class="panel-kepala"><h3>Produk terlaris</h3><a class="tautan-aksi" routerLink="/produksi/produk">Semua<app-ikon n="kanan" /></a></div>
+        <table class="tabel">
+          <thead><tr><th>Produk</th><th class="r">Nilai</th><th class="r">Qty vs bln lalu</th></tr></thead>
+          <tbody>
+            @for (p of d()?.produk_teratas; track p.id) {
+              <tr><td><a class="tautan-teks" [routerLink]="'/produksi/produk/' + p.id">{{ p.produk }}</a></td>
+                <td class="r">{{ p.nilai | rupiah: true }}</td><td class="r"><app-delta [nilai]="p.ubah" /></td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Penjualan per kategori</h3><span class="redup kecil">{{ totalKategori() | rupiah: true }}</span></div>
+        <div class="panel-isi batang-list">
+          @for (k of kategori(); track k.nama) {
+            <div class="batang">
+              <div class="batang-label"><span>{{ k.nama }}</span><b>{{ k.nilai | rupiah: true }}</b></div>
+              <div class="batang-jalur"><i [style.width.%]="k.persen"></i></div>
+              <small>{{ k.persen | angka: 1 }}%</small>
+            </div>
+          }
+        </div>
+      </section>
+    }
+    @if (d()?.aging) {
+      <section class="panel">
+        <div class="panel-kepala"><h3>Umur piutang</h3><a class="tautan-aksi" routerLink="/keuangan/piutang">Detail<app-ikon n="kanan" /></a></div>
+        <div class="panel-isi">
+          <div class="aging-total"><span>Total piutang</span><b>{{ d()?.aging?.total | rupiah: true }}</b></div>
+          <div class="aging-bar">@for (a of aging(); track a.label) { <i [style.width.%]="a.persen" [style.background]="a.warna"></i> }</div>
+          <div class="aging-list">
+            @for (a of aging(); track a.label) {
+              <div><span class="dot" [style.background]="a.warna"></span><span>{{ a.label }}</span><b>{{ a.nilai | rupiah: true }}</b></div>
+            }
+          </div>
+        </div>
+      </section>
+    } @else {
+      <section class="panel"><div class="panel-kepala"><h3>Umur piutang</h3></div>
+        <app-kosong ikon="kunci" judul="Tidak ada akses" isi="Data piutang hanya untuk Finance dan Direksi." /></section>
+    }
+  </div>
+
+  <div class="grid g-2">
+    @if (d()?.customer_teratas) {
+      <section class="panel">
+        <div class="panel-kepala"><h3>Customer teratas<span class="panel-sub">{{ d()?.bulan | bulan }}</span></h3>
+          <a class="tautan-aksi" routerLink="/penjualan/customer">Semua<app-ikon n="kanan" /></a></div>
+        <table class="tabel">
+          <tbody>
+            @for (c of d()?.customer_teratas; track c.id) {
+              <tr><td><div class="sel-orang"><app-avatar [nama]="c.customer" ukuran="kecil" />
+                <div class="sel-utama"><a [routerLink]="'/penjualan/customer/' + c.id">{{ c.customer }}</a><small>{{ c.segmen }} · {{ c.kota }}</small></div></div></td>
+                <td class="r tebal">{{ c.nilai | rupiah: true }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+    <section class="panel">
+      <div class="panel-kepala"><h3>Aktivitas terbaru</h3>
+        @if (auth.punya('pengaturan')) { <a class="tautan-aksi" routerLink="/pengaturan/aktivitas">Log lengkap<app-ikon n="kanan" /></a> }</div>
+      <div class="panel-isi">
+        <ol class="linimasa">
+          @for (a of d()?.aktivitas; track $index) {
+            <li [class.j-ai]="a.modul === 'Asisten AI'">
+              <span class="lm-ikon"><app-ikon [n]="a.modul === 'Asisten AI' ? 'asisten' : a.modul === 'Keuangan' ? 'bayar' : a.modul === 'Penjualan' ? 'so' : 'titik'" /></span>
+              <div class="lm-isi"><b>{{ a.nama }}</b> <span class="redup">{{ a.aksi.toLowerCase() }}</span>
+                <p>{{ a.objek }}</p></div>
+              <span class="lm-waktu">{{ a.waktu | relatif }}</span>
+            </li>
+          } @empty { <app-kosong ikon="aktivitas" judul="Belum ada aktivitas" /> }
+        </ol>
+      </div>
+    </section>
+  </div>
+}

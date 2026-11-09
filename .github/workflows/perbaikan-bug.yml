@@ -1,0 +1,76 @@
+# Persetujuan 1 → agent perbaikan.
+# Saat developer memberi label "siap-dikerjakan" pada issue, workflow ini mengirim isi issue ke
+# routine "perbaikan-bug" di Claude (pemicu API /fire). Routine mencari penyebab, menulis test,
+# memperbaiki, lalu membuka draft pull request. Merge tetap keputusan developer (persetujuan 2).
+#
+# Secret repo yang dibutuhkan: ROUTINE_URL dan ROUTINE_TOKEN (dari halaman routine → trigger API).
+# Hanya orang dengan akses triage/write ke repo yang bisa memberi label, jadi label = persetujuan.
+name: Perbaikan bug oleh agent
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write   # hanya untuk menulis komentar berisi tautan sesi agent
+
+jobs:
+  panggil-routine:
+    if: github.event.label.name == 'siap-dikerjakan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: perbaikan-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Kirim issue ke routine perbaikan-bug
+        id: fire
+        env:
+          # Judul dan isi issue lewat env, bukan disisipkan langsung ke skrip (cegah script injection).
+          ROUTINE_URL: ${{ secrets.ROUTINE_URL }}
+          ROUTINE_TOKEN: ${{ secrets.ROUTINE_TOKEN }}
+          REPO: ${{ github.repository }}
+          NOMOR: ${{ github.event.issue.number }}
+          JUDUL: ${{ github.event.issue.title }}
+          ISI: ${{ github.event.issue.body }}
+          URL_ISSUE: ${{ github.event.issue.html_url }}
+          OLEH: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ROUTINE_URL" ] || [ -z "$ROUTINE_TOKEN" ]; then
+            echo "::error::Secret ROUTINE_URL / ROUTINE_TOKEN belum diisi."
+            exit 1
+          fi
+          # Batasi panjang isi issue supaya payload tetap kecil.
+          ISI_PENDEK="$(printf '%s' "$ISI" | head -c 20000)"
+          jq -n \
+            --arg repo "$REPO" --arg nomor "$NOMOR" --arg judul "$JUDUL" \
+            --arg url "$URL_ISSUE" --arg oleh "$OLEH" --arg isi "$ISI_PENDEK" \
+            '{text: ("Repo: " + $repo + "\nIssue #" + $nomor + ": " + $judul + "\nURL: " + $url
+                     + "\nDisetujui untuk dikerjakan oleh: " + $oleh + "\n\n--- Isi issue ---\n" + $isi)}' \
+            > payload.json
+          # Header wajib: Authorization dan anthropic-version. anthropic-beta sekarang opsional.
+          curl --fail-with-body -sS -X POST "$ROUTINE_URL" \
+            -H "Authorization: Bearer $ROUTINE_TOKEN" \
+            -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "Content-Type: application/json" \
+            --data @payload.json > respon.json
+          SESI="$(jq -r '.claude_code_session_url // empty' respon.json)"
+          echo "sesi=$SESI" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Routine perbaikan-bug dipanggil"
+            echo "Issue: #$NOMOR"
+            [ -n "$SESI" ] && echo "Sesi agent: $SESI"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tulis tautan sesi agent di issue
+        if: steps.fire.outputs.sesi != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NOMOR: ${{ github.event.issue.number }}
+          SESI: ${{ steps.fire.outputs.sesi }}
+        run: |
+          gh issue comment "$NOMOR" --body "Agent perbaikan mulai bekerja. Sesi: $SESI
+          Hasilnya berupa draft pull request yang menautkan issue ini. Merge tetap menunggu review developer."

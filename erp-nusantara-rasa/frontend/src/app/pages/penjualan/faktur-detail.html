@@ -1,0 +1,109 @@
+@if (f(); as f) {
+  <app-judul [judul]="f.nomor" [jejak]="[{ label: 'Penjualan' }, { label: 'Faktur penjualan', tautan: '/penjualan/faktur' }, { label: f.nomor }]">
+    <app-status judul-ekstra [nilai]="f.status" />
+    <ng-container meta>
+      <a [routerLink]="'/penjualan/customer/' + f.customer_id">{{ f.customer }}</a>
+      <span><app-ikon n="kalender" />{{ f.tanggal | tgl }}</span>
+      <span><app-ikon n="jam" />Jatuh tempo {{ f.jatuh_tempo | tgl }}</span>
+    </ng-container>
+    <a class="btn" [href]="'/cetak/faktur/' + f.id" target="_blank"><app-ikon n="cetak" />Cetak</a>
+    @if (auth.punya('pembayaran_catat') && f.sisa > 0.5) {
+      <button class="btn-utama" (click)="bukaBayar()"><app-ikon n="bayar" />Catat pembayaran</button>
+    }
+  </app-judul>
+
+  <app-tahapan [tahap]="tahapan()" />
+
+  @if (f.hari_lewat > 0) {
+    <div class="pita" [class]="'pita ' + (f.hari_lewat > 60 ? 'p-bahaya' : 'p-peringatan')"><app-ikon n="awas" />
+      <div class="pita-isi"><b>Lewat jatuh tempo {{ f.hari_lewat }} hari</b><p>Tahap penagihan: {{ f.tahap.toLowerCase() }} (KBJ-KEU-004).</p></div></div>
+  }
+
+  <div class="grid g-record">
+    <div class="tumpuk">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Baris faktur</h3><span class="redup kecil">{{ f.item.length }} produk · {{ f.gudang ?? '–' }}</span></div>
+        <table class="tabel">
+          <thead><tr><th>Produk</th><th class="r">Qty</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Subtotal</th></tr></thead>
+          <tbody>
+            @for (i of f.item; track i.id) {
+              <tr>
+                <td><div class="sel-utama"><a [routerLink]="'/produksi/produk/' + i.produk_id">{{ i.nama }}</a><small>{{ i.kode }}</small></div></td>
+                <td class="r">{{ i.qty | angka }} <span class="samar">{{ i.satuan }}</span></td>
+                <td class="r">{{ i.harga | rupiah }}</td>
+                <td class="r redup">{{ i.diskon_persen | angka: 1 }}%</td>
+                <td class="r tebal">{{ i.subtotal | rupiah }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <div class="total-blok">
+          <div><span>Subtotal sebelum diskon</span><b>{{ f.bruto | rupiah }}</b></div>
+          <div><span>Diskon</span><b>−{{ f.bruto - f.total | rupiah }}</b></div>
+          <div class="besar"><span>Total faktur</span><b>{{ f.total | rupiah }}</b></div>
+          <div><span class="samar kecil">Harga sudah termasuk PPN</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Riwayat</h3></div>
+        <div class="panel-isi"><app-riwayat [data]="f.riwayat" /></div>
+      </section>
+    </div>
+
+    <aside class="tumpuk">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Pembayaran</h3><app-status [nilai]="f.status" /></div>
+        <div class="panel-isi">
+          <div class="kredit-angka">
+            <div><span>Terbayar</span><b>{{ f.terbayar | rupiah: true }}</b></div>
+            <div><span>Sisa</span><b [class.t-bahaya]="f.hari_lewat > 0">{{ f.sisa > 0.5 ? (f.sisa | rupiah: true) : 'Rp 0' }}</b></div>
+          </div>
+          <div class="meter"><i [style.width.%]="persenBayar()"></i></div>
+          <div class="kredit-bawah"><span>{{ persenBayar() | angka: 0 }}% dari {{ f.total | rupiah }}</span></div>
+        </div>
+        @if (f.pembayaran?.length) {
+          <table class="tabel">
+            <tbody>@for (b of f.pembayaran; track b.id) {
+              <tr><td><div class="sel-utama"><b>{{ b.jumlah | rupiah }}</b><small>{{ b.tanggal | tgl }} · {{ b.metode }}</small></div></td>
+                <td class="r kode redup">{{ b.referensi }}</td></tr>
+            }</tbody>
+          </table>
+        } @else if (f.pembayaran === null) {
+          <div class="panel-kaki"><app-ikon n="kunci" [ukuran]="13" /> Rincian pembayaran hanya untuk Finance.</div>
+        }
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Ditagihkan kepada</h3><a class="tautan-aksi" [routerLink]="'/penjualan/customer/' + f.customer_id">Profil<app-ikon n="kanan" /></a></div>
+        <div class="panel-isi daftar-info">
+          <div><span>Nama</span><b>{{ f.customer_info.nama }}</b></div>
+          <div><span>Alamat</span><span>{{ f.customer_info.alamat }}</span></div>
+          <div><span>Kontak</span><span>{{ f.customer_info.kontak }}</span></div>
+          <div><span>Telepon</span><span>{{ f.customer_info.telepon }}</span></div>
+          <div><span>Termin</span><span>{{ f.customer_info.termin_hari }} hari</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Dokumen terkait</h3></div>
+        <div class="dok-terkait">
+          @if (f.so) { <a [routerLink]="'/penjualan/sales-order/' + f.so.id"><app-ikon n="so" /><span><b>{{ f.so.nomor }}</b><small>Sales order · {{ f.so.tanggal | tgl }}</small></span></a> }
+          <div class="dt"><app-ikon n="faktur" /><span><b>{{ f.nomor }}</b><small>Faktur · dokumen ini</small></span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <p-dialog header="Catat pembayaran" [visible]="dialogBayar()" (visibleChange)="dialogBayar.set($event)" [modal]="true" [style]="{ width: '500px' }" appendTo="body">
+    <p class="dialog-sub">{{ f.nomor }} · sisa tagihan {{ f.sisa | rupiah }}</p>
+    <div class="form-grid">
+      <label class="isian">Tanggal<p-datepicker [(ngModel)]="tanggal" [minDate]="minTanggal()" [maxDate]="maxTanggal()" dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body" /></label>
+      <label class="isian">Metode<p-select [options]="auth.meta()!.metode_bayar" [(ngModel)]="metode" appendTo="body" /></label>
+      <label class="isian penuh">Jumlah<p-inputnumber [(ngModel)]="jumlah" mode="currency" currency="IDR" locale="id-ID" [maxFractionDigits]="0" [max]="f.sisa" /></label>
+      <label class="isian penuh">Referensi<input [(ngModel)]="referensi" placeholder="No. transfer / giro" /></label>
+    </div>
+    @if (galat()) { <div class="galat-form" style="margin-top: 12px"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+    <div class="dialog-aksi">
+      <button class="btn" (click)="dialogBayar.set(false)">Batal</button>
+      <button class="btn-utama" (click)="bayar()" [disabled]="proses() || !jumlah">Simpan pembayaran</button>
+    </div>
+  </p-dialog>
+}

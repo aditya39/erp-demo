@@ -1,0 +1,119 @@
+<app-judul judul="Sales order baru" [jejak]="[{ label: 'Penjualan' }, { label: 'Sales order', tautan: '/penjualan/sales-order' }, { label: 'Baru' }]">
+  <ng-container meta><span>Harga dan diskon standar diisi sistem dari daftar harga dan segmen customer</span></ng-container>
+  <a class="btn" routerLink="/penjualan/sales-order">Batal</a>
+  <button class="btn-utama" (click)="simpan()" [disabled]="!bisaSimpan()">{{ menyimpan() ? 'Menyimpan…' : 'Simpan sales order' }}</button>
+</app-judul>
+
+@if (sumber() === 'asisten_ai') {
+  <div class="pita"><app-ikon n="asisten" class="ikon-ai" />
+    <div class="pita-isi"><b>Diisi dari draft Asisten AI</b>
+      <p>Periksa customer, gudang, qty, dan diskon tambahan sebelum menyimpan. Harga, diskon standar, kredit, dan persetujuan tetap dihitung sistem.</p></div>
+  </div>
+}
+
+<div class="grid g-record">
+  <div class="tumpuk">
+    <section class="panel">
+      <div class="panel-kepala"><h3>Informasi pesanan</h3></div>
+      <div class="panel-isi form-grid">
+        <label class="isian penuh">Customer
+          <p-select [options]="customer()" optionLabel="nama" optionValue="id" [ngModel]="customerId" (ngModelChange)="pilihCustomer($event)"
+                    [filter]="true" filterBy="nama,kode,kota" placeholder="Pilih customer" appendTo="body">
+            <ng-template #item let-c><div class="opsi-customer"><b>{{ c.nama }}</b><small>{{ c.kode }} · {{ c.segmen }} · {{ c.kota }}</small></div></ng-template>
+          </p-select>
+        </label>
+        <label class="isian">Tanggal
+          <p-datepicker [(ngModel)]="tanggal" (ngModelChange)="ubah()" [minDate]="minTanggal()" [maxDate]="maxTanggal()" dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body" />
+          <small>Periode berjalan {{ auth.meta()!.periode.akhir | bulan }}</small>
+        </label>
+        <label class="isian">Gudang pengirim
+          <p-select [options]="auth.meta()!.gudang" [(ngModel)]="gudang" (ngModelChange)="ubah()" appendTo="body" />
+        </label>
+        <label class="isian">Diskon tambahan
+          <p-inputnumber titikDesimal [(ngModel)]="diskonTambahan" (ngModelChange)="ubah()" [min]="0" [max]="5" [step]="0.5" [showButtons]="true"
+                         mode="decimal" locale="id-ID" [minFractionDigits]="0" [maxFractionDigits]="2" suffix=" %" />
+          <small>Sampai {{ auth.meta()!.aturan.diskon_supervisor | angka: 1 }}% tanpa persetujuan; di atasnya perlu Manajer Penjualan (maks. {{ auth.meta()!.aturan.diskon_maks }}%).</small>
+        </label>
+        <label class="isian">Diskon standar
+          <input [value]="cust() ? (sim()?.hitungan?.diskon_standar ?? '–') + '% · ' + cust()!.segmen : '–'" disabled />
+          <small>Ditetapkan sistem per segmen (KBJ-PJL-002).</small>
+        </label>
+        <label class="isian penuh">Catatan<input [(ngModel)]="catatan" placeholder="Opsional" /></label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-kepala"><h3>Produk<span class="panel-sub">stok dari {{ gudang }}</span></h3></div>
+      <table class="tabel item-so">
+        <thead><tr><th style="width: 40%">Produk</th><th class="r">Stok</th><th class="r">Qty</th><th class="r">Harga</th><th class="r">Diskon</th><th class="r">Subtotal</th><th></th></tr></thead>
+        <tbody>
+          @for (it of barisItem; track $index; let i = $index) {
+            <tr>
+              <td>
+                <p-select [options]="opsiProduk(i)" optionLabel="nama" optionValue="id" [(ngModel)]="it.produk_id" (ngModelChange)="ubah()"
+                          [filter]="true" filterBy="nama,kode" placeholder="Pilih produk" appendTo="body">
+                  <ng-template #item let-p><div class="opsi-customer"><b>{{ p.nama }}</b><small>{{ p.kode }} · {{ p.harga_jual | rupiah }} / {{ p.satuan }}</small></div></ng-template>
+                </p-select>
+              </td>
+              <td class="r nowrap" [class.t-bahaya]="stok(it.produk_id) !== null && it.qty > stok(it.produk_id)!">
+                {{ stok(it.produk_id) === null ? '–' : (stok(it.produk_id) | angka) }}</td>
+              <td class="r"><p-inputnumber [(ngModel)]="it.qty" (ngModelChange)="ubah()" [min]="1" [useGrouping]="true" /></td>
+              <td class="r nowrap">{{ infoProduk(it.produk_id) ? (infoProduk(it.produk_id)!.harga_jual | rupiah) : '–' }}</td>
+              <td class="r nowrap redup">{{ sim()?.hitungan ? ((sim()!.hitungan!.diskon_standar + sim()!.hitungan!.diskon_tambahan) | angka: 1) + '%' : '–' }}</td>
+              <td class="r nowrap tebal">{{ subtotal(it.produk_id) === null ? '–' : (subtotal(it.produk_id) | rupiah) }}</td>
+              <td class="r"><button class="btn-ikon" (click)="hapusBaris(i)" aria-label="Hapus baris"><app-ikon n="hapus" [ukuran]="15" /></button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <div class="tambah-baris"><button class="btn-hantu" (click)="tambahBaris()"><app-ikon n="plus" />Tambah baris</button></div>
+      <div class="total-blok">
+        <div><span>Subtotal sebelum diskon</span><b>{{ bruto() | rupiah }}</b></div>
+        <div><span>Diskon</span><b>−{{ (bruto() - (sim()?.hitungan?.total ?? 0)) | rupiah }}</b></div>
+        <div class="besar"><span>Total</span><b>{{ sim()?.hitungan?.total ?? 0 | rupiah }}</b></div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="tumpuk so-ringkas">
+    <section class="panel">
+      <div class="panel-kepala"><h3>Kredit customer</h3>
+        @if (sim()?.kredit; as k) { <app-status [nilai]="k.credit_hold ? 'Credit hold' : k.tahap" /> }</div>
+      <div class="panel-isi">
+        @if (sim()?.kredit; as k) {
+          <div class="kredit-angka">
+            <div><span>Piutang</span><b>{{ k.piutang | rupiah: true }}</b></div>
+            <div><span>Limit</span><b>{{ k.limit_kredit | rupiah: true }}</b></div>
+          </div>
+          <div class="meter" [class.bahaya]="k.pemakaian_persen > 100" [class.waspada]="k.pemakaian_persen > 80 && k.pemakaian_persen <= 100">
+            <i [style.width.%]="k.pemakaian_persen > 100 ? 100 : k.pemakaian_persen"></i></div>
+          <div class="kredit-bawah"><span>{{ k.pemakaian_persen | angka: 0 }}% terpakai</span>
+            <span>Tunggakan terlama <b [class.t-bahaya]="k.hari_lewat_maks > 30">{{ k.hari_lewat_maks }} hari</b></span></div>
+        } @else {
+          <p class="redup kecil">Pilih customer untuk melihat limit kredit dan tunggakan.</p>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-kepala"><h3>Pemeriksaan</h3></div>
+      <div class="panel-isi">
+        @if (perkiraan(); as pk) {
+          <div class="status-perkiraan" [class]="'status-perkiraan ' + pk.kelas"><app-ikon [n]="pk.ikon" />{{ pk.judul }}</div>
+        }
+        <ul class="cek-list">
+          @if (sim()?.galat) { <li class="cek-galat"><app-ikon n="galat" /><div><b>Belum dapat disimpan</b><small>{{ sim()!.galat }}</small></div></li> }
+          @for (p of sim()?.persetujuan ?? []; track p.jenis) {
+            <li class="cek-warn"><app-ikon n="setuju" /><div><b>{{ p.judul }} · {{ p.peran }}</b><small>{{ p.alasan }}</small></div></li>
+          }
+          @for (w of sim()?.peringatan ?? []; track w) { <li class="cek-info"><app-ikon n="info" /><div><small>{{ w }}</small></div></li> }
+          @if (sim()?.hitungan && !sim()?.galat && !(sim()?.persetujuan ?? []).length) {
+            <li class="cek-ok"><app-ikon n="ok" /><div><b>Limit, tunggakan, diskon, dan stok aman</b><small>Faktur terbit otomatis saat disimpan.</small></div></li>
+          }
+          @if (!sim()?.hitungan && !sim()?.galat) { <li><app-ikon n="kosong" class="samar" /><div><small>Pilih customer dan produk.</small></div></li> }
+        </ul>
+        @if (galat()) { <div class="galat-form" style="margin-top: 10px"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+      </div>
+    </section>
+  </aside>
+</div>

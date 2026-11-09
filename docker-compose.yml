@@ -1,0 +1,52 @@
+# ERP demo untuk Demo A (QA → issue → perbaikan). Repo ini SENGAJA berisi bug, jadi project, image,
+# dan database dipisah dari ERP asli (project asisten-erp-ai, port 8080) supaya keduanya tidak tertukar.
+#
+#   docker compose up -d --build          # http://localhost:8081, akun andi / demo123
+#   ERP_DEMO_PORT=18080 docker compose up -d --build
+#   docker compose down -v                # berhenti dan hapus data (SO hasil uji ikut terhapus)
+#
+# Asisten AI tidak dibutuhkan untuk demo ini (indeks RAG tidak diisi otomatis).
+# Password DB: DB_ADMIN_PASSWORD / ERP_APP_PASSWORD dari environment atau .env di folder ini (default nilai lama).
+
+name: erp-demo
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: erp
+      POSTGRES_USER: erp_admin
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:-admin_workshop}
+    volumes:
+      - ./kit/asisten-erp-ai/db/init:/docker-entrypoint-initdb.d:ro
+      - erp-demo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp_admin -d erp"]
+      interval: 5s
+      retries: 20
+
+  erp:
+    build:
+      context: .
+      dockerfile: erp-nusantara-rasa/Dockerfile
+    image: erp-demo:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ERP_DATABASE_URL: postgresql://erp_app:${ERP_APP_PASSWORD:-aplikasi_erp}@db:5432/erp
+      ERP_DATABASE_URL_ADMIN: postgresql://erp_admin:${DB_ADMIN_PASSWORD:-admin_workshop}@db:5432/erp
+      DATABASE_URL: postgresql://erp_ai_readonly:baca_saja@db:5432/erp
+      DATABASE_URL_ADMIN: postgresql://erp_admin:${DB_ADMIN_PASSWORD:-admin_workshop}@db:5432/erp
+      LOKAL_BASE_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}/v1
+      ERP_AUTO_INGEST: "0"
+      TZ: WIB-7
+      ERP_SESSION_SECRET: ${ERP_SESSION_SECRET:-erp-demo-bukan-rahasia}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${ERP_DEMO_PORT:-8081}:8080"
+    restart: unless-stopped
+
+volumes:
+  erp-demo-data:

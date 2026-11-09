@@ -1,0 +1,89 @@
+<app-judul judul="Penerimaan pembayaran" [jejak]="[{ label: 'Keuangan' }, { label: 'Penerimaan pembayaran' }]">
+  <ng-container meta><span>Pembayaran dialokasikan otomatis ke faktur tertua lebih dulu (KBJ-KEU-004)</span></ng-container>
+  <button class="btn" (click)="ekspor()"><app-ikon n="unduh" />Ekspor</button>
+  @if (auth.punya('pembayaran_catat')) { <button class="btn-utama" (click)="buka()"><app-ikon n="plus" />Catat pembayaran</button> }
+</app-judul>
+
+<div class="statistik">
+  <div class="stat"><span class="stat-label">Diterima periode berjalan</span><span class="stat-nilai">{{ bulanIni()?.jumlah | rupiah: true }}</span>
+    <span class="stat-ket">{{ bulanIni()?.n | angka }} transaksi</span></div>
+  <div class="stat"><span class="stat-label">Transaksi</span><span class="stat-nilai">{{ d.total() | angka }}</span><span class="stat-ket">sesuai filter</span></div>
+</div>
+
+<section class="panel">
+  <div class="alat">
+    <div class="cari-kecil"><app-ikon n="cari" />
+      <input [(ngModel)]="q" (ngModelChange)="d.filter['q'] = $event; d.segarkan(300)" placeholder="Cari customer, faktur, referensi" /></div>
+    <p-select [options]="auth.meta()!.metode_bayar" [(ngModel)]="metodeFilter" (ngModelChange)="d.filter['metode'] = $event ?? ''; d.segarkan()" placeholder="Semua metode" [showClear]="true" />
+  </div>
+  <p-table [value]="d.baris()" [lazy]="true" (onLazyLoad)="d.muat($event)" [loading]="d.memuat()" [paginator]="true" [rows]="20"
+           [totalRecords]="d.total()" [rowsPerPageOptions]="[20, 50, 100]" sortField="tanggal" [sortOrder]="-1" dataKey="id"
+           [showCurrentPageReport]="true" currentPageReportTemplate="{first}–{last} dari {totalRecords}">
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="tanggal">Tanggal <p-sortIcon field="tanggal" /></th>
+        <th pSortableColumn="customer">Customer <p-sortIcon field="customer" /></th>
+        <th>Faktur</th><th>Metode</th><th>Referensi</th>
+        <th class="r" pSortableColumn="jumlah">Jumlah <p-sortIcon field="jumlah" /></th>
+        <th>Dicatat oleh</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-r>
+      <tr>
+        <td class="nowrap redup">{{ r.tanggal | tgl }}</td>
+        <td><a class="tautan-teks" [routerLink]="'/penjualan/customer/' + r.customer_id">{{ r.customer }}</a></td>
+        <td><a class="kode" [routerLink]="'/penjualan/faktur/' + r.faktur_id">{{ r.nomor_faktur }}</a></td>
+        <td class="redup">{{ r.metode }}</td>
+        <td class="kode redup">{{ r.referensi || '–' }}</td>
+        <td class="r tebal">{{ r.jumlah | rupiah }}</td>
+        <td class="redup">{{ r.dicatat_oleh }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</section>
+
+<p-dialog header="Catat penerimaan pembayaran" [visible]="dialog()" (visibleChange)="dialog.set($event)" [modal]="true" [style]="{ width: '720px' }" appendTo="body">
+  @if (hasil(); as h) {
+    <div class="pita p-sukses"><app-ikon n="ok" /><div class="pita-isi"><b>{{ h.jumlah | rupiah }} tercatat</b><p>Dialokasikan ke {{ h.alokasi.length }} faktur, tertua lebih dulu.</p></div></div>
+    <table class="tabel"><thead><tr><th>Faktur</th><th class="r">Dibayar</th><th>Status</th></tr></thead>
+      <tbody>@for (a of h.alokasi; track a.nomor) { <tr><td class="kode">{{ a.nomor }}</td><td class="r">{{ a.jumlah | rupiah }}</td><td><app-status [nilai]="a.lunas ? 'Lunas' : 'Sebagian'" /></td></tr> }</tbody></table>
+    <div class="dialog-aksi"><button class="btn-utama" (click)="dialog.set(false)">Selesai</button></div>
+  } @else {
+    <div class="form-grid">
+      <label class="isian penuh">Customer
+        <p-select [options]="customer()" optionLabel="nama" optionValue="id" [ngModel]="customerId" (ngModelChange)="pilihCustomer($event)"
+                  [filter]="true" filterBy="nama,kode" placeholder="Pilih customer yang memiliki piutang" appendTo="body">
+          <ng-template #item let-c><div class="opsi-customer"><b>{{ c.nama }}</b><small>{{ c.kode }} · piutang {{ c.piutang | rupiah }}</small></div></ng-template>
+        </p-select>
+      </label>
+      <label class="isian">Tanggal terima<p-datepicker [(ngModel)]="tanggal" [minDate]="minTanggal()" [maxDate]="maxTanggal()" dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body" /></label>
+      <label class="isian">Metode<p-select [options]="auth.meta()!.metode_bayar" [(ngModel)]="metode" appendTo="body" /></label>
+      <label class="isian">Jumlah diterima
+        <p-inputnumber [ngModel]="jumlah" (ngModelChange)="setJumlah($event)" mode="currency" currency="IDR" locale="id-ID" [maxFractionDigits]="0" [max]="totalSisa()" />
+        @if (totalSisa()) { <small><a class="tautan-teks" href="" (click)="$event.preventDefault(); setJumlah(totalSisa())">Lunasi semua · {{ totalSisa() | rupiah }}</a></small> }
+      </label>
+      <label class="isian">Referensi<input [(ngModel)]="referensi" placeholder="No. transfer / giro" /></label>
+    </div>
+    @if (terbuka().length) {
+      <div class="ai-blok-judul" style="margin: 18px 0 8px">Pratinjau alokasi</div>
+      <div class="gulir-tabel pendek">
+        <table class="tabel">
+          <thead><tr><th>Faktur</th><th>Jatuh tempo</th><th class="r">Sisa</th><th class="r">Dialokasikan</th></tr></thead>
+          <tbody>
+            @for (f of alokasi(); track f.id) {
+              <tr [class.teralokasi]="f.bayar > 0"><td class="kode">{{ f.nomor }}</td>
+                <td class="nowrap redup">{{ f.jatuh_tempo | tgl }} @if (f.hari > 0) { <span class="kecil t-bahaya">· {{ f.hari }} hari</span> }</td>
+                <td class="r">{{ f.sisa | rupiah }}</td>
+                <td class="r tebal">{{ f.bayar ? (f.bayar | rupiah) : '–' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (galat()) { <div class="galat-form" style="margin-top: 12px"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+    <div class="dialog-aksi">
+      <button class="btn" (click)="dialog.set(false)">Batal</button>
+      <button class="btn-utama" (click)="simpan()" [disabled]="proses() || !customerId || !jumlah">Simpan pembayaran</button>
+    </div>
+  }
+</p-dialog>

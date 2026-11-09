@@ -1,0 +1,137 @@
+<aside class="ai-panel" [class.terbuka]="ai.terbuka()" aria-label="Asisten">
+  <header class="ai-head">
+    <div class="ai-identitas">
+      <span class="ai-logo"><app-ikon n="asisten" [ukuran]="15" /></span>
+      <div><b>Asisten</b><small>{{ modelAktif() }}</small></div>
+    </div>
+    <div class="ai-head-aksi">
+      <div class="segmen" role="group" aria-label="Model">
+        <button [class.aktif]="ai.mode() === 'lokal'" (click)="setMode('lokal')">Lokal</button>
+        <button [class.aktif]="ai.mode() === 'cloud'" [disabled]="!ai.info()?.cloud?.aktif" (click)="setMode('cloud')"
+                [pTooltip]="ai.info()?.cloud?.aktif ? '' : (ai.info()?.cloud?.alasan || 'Model cloud belum dikonfigurasi')" tooltipPosition="bottom">Cloud</button>
+      </div>
+      <button class="btn-ikon" (click)="menuAI.toggle($event)" aria-label="Menu asisten"><app-ikon n="lainnya" /></button>
+      <p-menu #menuAI [model]="menu" [popup]="true" appendTo="body">
+        <ng-template #item let-item><a class="p-menu-item-link"><app-ikon [n]="item.icon" [ukuran]="15" /><span>{{ item.label }}</span></a></ng-template>
+      </p-menu>
+      <button class="btn-ikon" (click)="ai.terbuka.set(false)" aria-label="Tutup"><app-ikon n="x" /></button>
+    </div>
+  </header>
+
+  <div class="ai-pita" [class.offline]="!tampilan.online() && ai.mode() === 'lokal'" [class.cloud]="ai.mode() === 'cloud'">
+    @if (ai.mode() === 'lokal') {
+      <app-ikon [n]="tampilan.online() ? 'akses' : 'offline'" />
+      <span>{{ tampilan.online() ? 'Model lokal · data tidak keluar dari jaringan perusahaan' : 'Offline · model lokal tetap berjalan' }}</span>
+    } @else {
+      <app-ikon n="awan" /><span>Model cloud · pertanyaan dan hasil tool dikirim ke penyedia model</span>
+    }
+  </div>
+
+  <div class="ai-isi" #gulir>
+    @if (!ai.pesan().length) {
+      <div class="ai-sambutan">
+        <div>
+          <h3>Tanya data perusahaan</h3>
+          <p>Asisten memanggil fungsi ERP yang sesuai, lalu menjelaskan hasilnya. Semua angka berasal dari database, bukan dari model.</p>
+        </div>
+        <div>
+          <div class="ai-blok-judul">Data yang bisa dibaca untuk {{ auth.namaDepan() }}</div>
+          <div class="ai-akses-list">
+            @for (z of izinAI(); track z.label) {
+              <span [class.boleh]="z.boleh"><app-ikon [n]="z.boleh ? 'centang' : 'kunci'" />{{ z.label }}</span>
+            }
+          </div>
+        </div>
+        @if (saran().length) {
+          <div>
+            <div class="ai-blok-judul">Contoh pertanyaan</div>
+            <div class="ai-saran">
+              @for (s of saran(); track s.teks) {
+                <button (click)="ai.tanya(s.teks)"><app-ikon n="panah" />{{ s.teks }}</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+    @for (p of ai.pesan(); track p.id) {
+      @if (p.peran === 'user') {
+        <div class="ai-user"><div>{{ p.teks }}</div></div>
+      } @else {
+        <app-pesan-ai [p]="p" />
+      }
+    }
+  </div>
+
+  <footer class="ai-tulis">
+    @if (ai.pesan().length && !ai.sibuk() && saran().length) {
+      <div class="ai-chip">
+        @for (s of saran().slice(0, 3); track s.teks) { <button (click)="ai.tanya(s.teks)" [title]="s.teks">{{ s.teks }}</button> }
+      </div>
+    }
+    <div class="ai-input" [class.sibuk]="ai.sibuk()">
+      <textarea #input rows="1" [ngModel]="ai.draf()" (ngModelChange)="ai.draf.set($event)" (keydown)="tekan($event)"
+                placeholder="Tanyakan penjualan, HPP, atau kebijakan…" [disabled]="ai.sibuk()"></textarea>
+      <button class="ai-kirim" (click)="kirim()" [disabled]="ai.sibuk() || !ai.draf().trim()" aria-label="Kirim">
+        <app-ikon [n]="ai.sibuk() ? 'jam' : 'kirim'" [ukuran]="15" />
+      </button>
+    </div>
+    <small class="ai-catatan">Mengikuti hak akses Anda. Periksa kembali sebelum dipakai untuk keputusan.</small>
+  </footer>
+</aside>
+
+<p-dialog header="Tools & hak akses" [visible]="dialogTools()" (visibleChange)="dialogTools.set($event)" [modal]="true"
+          [style]="{ width: '620px' }" [dismissableMask]="true" appendTo="body">
+  <p class="dialog-sub">Model memilih fungsi; kode aplikasi mengecek izin sebelum fungsi dijalankan. Izin berasal dari hak akses Anda di ERP.</p>
+  <div class="daftar-tool">
+    @for (t of ai.info()?.tools ?? []; track t.nama) {
+      <div class="tool-baris" [class.terkunci]="!t.boleh">
+        <app-ikon [n]="t.boleh ? 'ok' : 'kunci'" />
+        <div><b>{{ labelTool[t.nama] || t.nama }}</b><code>{{ t.nama }}</code><p>{{ t.deskripsi }}</p></div>
+        <span class="badge b-garis">{{ t.label_izin }}</span>
+      </div>
+    }
+  </div>
+</p-dialog>
+
+<p-dialog header="Putar rekaman demo" [visible]="dialogRekaman()" (visibleChange)="dialogRekaman.set($event)" [modal]="true"
+          [style]="{ width: '600px' }" [dismissableMask]="true" appendTo="body">
+  <p class="dialog-sub">Cadangan bila model lokal lambat saat presentasi. Rekaman diputar dengan jeda waktu aslinya.</p>
+  <div class="kecepatan">
+    <span>Kecepatan</span>
+    <div class="segmen">@for (k of [1, 2, 4]; track k) { <button [class.aktif]="kecepatan() === k" (click)="kecepatan.set(k)">{{ k }}×</button> }</div>
+  </div>
+  <div class="rekaman-grup">Demo workshop</div>
+  @for (r of rekamanDemo(); track r.file) {
+    <button class="rekaman-baris" (click)="putar(r)"><app-ikon n="putar" />
+      <span><b>{{ r.pesan }}</b><small>{{ r.file.replace('.json', '') }} · {{ r.pengguna }} · {{ r.mode }} · {{ detik(r.durasi_ms) }}</small></span></button>
+  }
+  @if (rekamanErp().length) {
+    <div class="rekaman-grup">Riwayat dari ERP ini</div>
+    @for (r of rekamanErp(); track r.file) {
+      <button class="rekaman-baris" (click)="putar(r)"><app-ikon n="putar" />
+        <span><b>{{ r.pesan }}</b><small>{{ r.file.slice(0, 15) }} · {{ r.pengguna }} · {{ r.mode }} · {{ detik(r.durasi_ms) }}</small></span></button>
+    }
+  }
+</p-dialog>
+
+<p-dialog header="Bandingkan model lokal vs cloud" [visible]="dialogBanding()" (visibleChange)="dialogBanding.set($event)" [modal]="true"
+          [style]="{ width: 'min(1160px, 96vw)' }" appendTo="body">
+  <div class="banding-tanya">
+    <input [ngModel]="bandingTanya()" (ngModelChange)="bandingTanya.set($event)" (keydown.enter)="jalankanBanding()" placeholder="Pertanyaan…" />
+    <button class="btn-utama" (click)="jalankanBanding()"><app-ikon n="putar" /> Jalankan keduanya</button>
+  </div>
+  <div class="banding-kolom">
+    @for (m of ['lokal', 'cloud']; track m) {
+      <div class="banding-sisi">
+        <div class="banding-head">
+          <span class="badge" [class]="'badge ' + (m === 'lokal' ? 'b-merek' : 'b-info')">{{ m === 'lokal' ? 'Lokal' : 'Cloud' }}</span>
+          <b>{{ m === 'lokal' ? ai.info()?.lokal?.model : ai.info()?.cloud?.model }}</b>
+          @if ((m === 'lokal' ? banding().lokal : banding().cloud)?.durasi_ms; as ms) { <span class="banding-waktu">{{ detik(ms) }}</span> }
+        </div>
+        @if (m === 'lokal' ? banding().lokal : banding().cloud; as p) { <app-pesan-ai [p]="p" [aksi]="false" /> }
+        @else { <div class="banding-kosong">Belum dijalankan</div> }
+      </div>
+    }
+  </div>
+</p-dialog>

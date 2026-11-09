@@ -1,0 +1,106 @@
+@if (p(); as p) {
+  <app-judul [judul]="p.nama" [jejak]="[{ label: 'Produksi & biaya' }, { label: 'Produk', tautan: '/produksi/produk' }, { label: p.nama }]">
+    @if ((ubahHpp() ?? 0) > 8) { <app-status judul-ekstra nilai="Menunggu Persetujuan" label="Perlu kajian harga" /> }
+    <ng-container meta><span class="kode">{{ p.kode }}</span><span>{{ p.kategori }}</span><span>per {{ p.satuan }}</span></ng-container>
+    @if (auth.punya('ai') && p.penjualan_bulanan) { <button class="btn" (click)="tanyaJual()"><app-ikon n="asisten" class="ikon-ai" />Tren penjualan</button> }
+    @if (auth.punya('ai') && p.hpp_bulanan) { <button class="btn" (click)="tanyaHpp()"><app-ikon n="asisten" class="ikon-ai" />Analisis HPP</button> }
+    @if (auth.punya('produk_kelola')) { <button class="btn" (click)="bukaHarga()"><app-ikon n="tag" />Ubah harga</button> }
+  </app-judul>
+
+  @if ((ubahHpp() ?? 0) > 8) {
+    <div class="pita p-peringatan"><app-ikon n="hpp" />
+      <div class="pita-isi"><b>HPP naik {{ ubahHpp() | angka: 1 }}% dari bulan lalu</b>
+        <p>Melewati ambang 8%. Divisi Finance wajib menyusun kajian penyesuaian harga dalam 14 hari kerja (KBJ-PJL-002).</p></div>
+      @if (auth.punya('ai')) { <div class="pita-aksi"><button class="tanya-asisten" (click)="tanyaHpp()"><app-ikon n="asisten" />Telusuri penyebab</button></div> }
+    </div>
+  }
+
+  <div class="statistik">
+    <div class="stat"><span class="stat-label">Harga jual</span><span class="stat-nilai">{{ p.harga_jual | rupiah }}</span><span class="stat-ket">harga daftar</span></div>
+    @if (hppKini(); as h) {
+      <div class="stat"><span class="stat-label">HPP per unit</span><span class="stat-nilai">{{ h.hpp_per_unit | rupiah }}</span>
+        <span class="stat-ket"><app-delta [nilai]="ubahHpp()" [terbalik]="true" /> dari {{ hppLalu()?.hpp_per_unit | rupiah }}</span></div>
+      <div class="stat"><span class="stat-label">Margin kotor</span><span class="stat-nilai" [class.t-bahaya]="(margin() ?? 100) < 30">{{ margin() | angka: 1 }}%</span>
+        <span class="stat-ket">bulan lalu <b>{{ marginLalu() | angka: 1 }}%</b></span></div>
+    } @else {
+      <div class="stat terkunci"><span class="stat-label"><app-ikon n="kunci" [ukuran]="13" />HPP & margin</span><span class="stat-nilai">—</span><span class="stat-ket">Tidak ada akses</span></div>
+    }
+    @if (p.stok) {
+      <div class="stat"><span class="stat-label">Stok semua gudang</span><span class="stat-nilai">{{ totalStok() | angka }}</span><span class="stat-ket">{{ p.satuan }}</span></div>
+    }
+  </div>
+
+  @if (p.hpp_bulanan) {
+    <div class="grid g-2">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Komposisi HPP per unit<span class="panel-sub">12 bulan</span></h3></div>
+        <div class="panel-isi"><app-grafik tipe="bar" [bertumpuk]="true" [label]="grafikHpp().label" [seri]="grafikHpp().seri" formatNilai="rupiah" [tinggi]="250" /></div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Resep & biaya bahan<span class="panel-sub">{{ hppKini()?.bulan | bulan }} vs bulan lalu</span></h3></div>
+        <table class="tabel">
+          <thead><tr><th>Bahan</th><th class="r">Pakai / unit</th><th class="r">Harga bahan</th><th class="r">Biaya / unit</th><th class="r">Perubahan</th></tr></thead>
+          <tbody>
+            @for (r of p.resep; track r.bahan_id) {
+              <tr [class.sorot]="(r.ubah ?? 0) > 8">
+                <td><a class="tautan-teks" [routerLink]="'/produksi/bahan-baku/' + r.bahan_id">{{ r.bahan }}</a></td>
+                <td class="r redup">{{ r.qty_per_unit | angka: 3 }} {{ r.satuan }}</td>
+                <td class="r redup">{{ r.harga_bahan | rupiah }}</td>
+                <td class="r tebal">{{ r.biaya_per_unit | rupiah }}</td>
+                <td class="r"><app-delta [nilai]="r.ubah" [terbalik]="true" /></td>
+              </tr>
+            }
+          </tbody>
+          <tfoot><tr><td colspan="3">Bahan baku per unit</td><td class="r">{{ hppKini()?.bahan_baku_per_unit | rupiah }}</td><td></td></tr></tfoot>
+        </table>
+      </section>
+    </div>
+  }
+
+  @if (p.penjualan_bulanan) {
+    <div class="grid g-2-1">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Penjualan<span class="panel-sub">qty per bulan</span></h3></div>
+        <div class="panel-isi"><app-grafik tipe="line" [label]="grafikJual().label" [seri]="grafikJual().seri" [tinggi]="230" /></div>
+      </section>
+      <section class="panel">
+        <div class="panel-kepala"><h3>Per segmen<span class="panel-sub">3 bulan</span></h3></div>
+        <div class="panel-isi batang-list">
+          @for (s of p.per_segmen; track s.segmen) {
+            <div class="batang">
+              <div class="batang-label"><span>{{ s.segmen }}</span><b>{{ s.nilai | rupiah: true }}</b></div>
+              <div class="batang-jalur"><i [style.width.%]="(s.nilai / totalSegmen()) * 100"></i></div>
+              <small>{{ (s.nilai / totalSegmen()) * 100 | angka: 0 }}%</small>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+    <div class="grid g-2">
+      <section class="panel">
+        <div class="panel-kepala"><h3>Customer teratas<span class="panel-sub">3 bulan</span></h3></div>
+        <table class="tabel"><tbody>@for (c of p.customer_teratas; track c.id) {
+          <tr><td><div class="sel-orang"><app-avatar [nama]="c.customer" ukuran="kecil" /><div class="sel-utama"><a [routerLink]="'/penjualan/customer/' + c.id">{{ c.customer }}</a><small>{{ c.segmen }}</small></div></div></td>
+            <td class="r redup">{{ c.qty | angka }} {{ p.satuan }}</td><td class="r tebal">{{ c.nilai | rupiah: true }}</td></tr>
+        }</tbody></table>
+      </section>
+      @if (p.stok) {
+        <section class="panel">
+          <div class="panel-kepala"><h3>Stok per gudang</h3><a class="tautan-aksi" routerLink="/persediaan/stok">Stok gudang<app-ikon n="kanan" /></a></div>
+          <table class="tabel"><thead><tr><th>Gudang</th><th class="r">Qty</th><th class="r">Minimum</th><th>Status</th></tr></thead>
+            <tbody>@for (s of p.stok; track s.gudang) {
+              <tr><td>{{ s.gudang }}</td><td class="r tebal">{{ s.qty | angka }}</td><td class="r redup">{{ s.stok_minimum | angka }}</td><td><app-status [nilai]="s.menipis ? 'Menipis' : 'Aman'" /></td></tr>
+            }</tbody></table>
+        </section>
+      }
+    </div>
+  }
+
+  <p-dialog header="Ubah harga jual" [visible]="dialogHarga()" (visibleChange)="dialogHarga.set($event)" [modal]="true" [style]="{ width: '420px' }" appendTo="body">
+    <p class="dialog-sub">{{ p.nama }} · harga saat ini {{ p.harga_jual | rupiah }}</p>
+    <label class="isian">Harga jual baru<p-inputnumber [(ngModel)]="hargaBaru" mode="currency" currency="IDR" locale="id-ID" [maxFractionDigits]="0" /></label>
+    @if (hppKini(); as h) { <p class="selisih">Margin kotor menjadi <b>{{ ((hargaBaru - h.hpp_per_unit) / hargaBaru) * 100 | angka: 1 }}%</b></p> }
+    @if (galat()) { <div class="galat-form"><app-ikon n="galat" [ukuran]="15" /> {{ galat() }}</div> }
+    <div class="dialog-aksi"><button class="btn" (click)="dialogHarga.set(false)">Batal</button><button class="btn-utama" (click)="simpanHarga()">Simpan</button></div>
+  </p-dialog>
+}

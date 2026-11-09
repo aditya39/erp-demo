@@ -1,0 +1,3 @@
+# Untuk unit test aturan bisnis ERP (tanpa database):  pip install -r requirements-dev.txt
+-r erp-nusantara-rasa/requirements.txt
+pytest>=8

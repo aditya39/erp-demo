@@ -1,0 +1,43 @@
+# Database ERP contoh (PostgreSQL 17 + pgvector).
+#   docker compose up -d          -> menjalankan database di localhost:5433
+#   docker compose down -v        -> menghapus database (data dibuat ulang saat up)
+#
+# Ollama sebaiknya diinstal langsung di laptop (bukan lewat Docker) supaya bisa
+# memakai GPU / Apple Silicon. Service "ollama" di bawah hanya untuk server Linux
+# dan baru jalan kalau dipanggil dengan:  docker compose --profile ollama up -d
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: erp-ai-db
+    environment:
+      POSTGRES_DB: erp
+      POSTGRES_USER: erp_admin
+      # Server bersama: scripts/server_bersama.sh membuat DB_ADMIN_PASSWORD acak (password default ada di kit).
+      # Hanya berlaku saat volume dibuat; database yang sudah ada diubah lewat ALTER ROLE oleh skrip itu.
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:-admin_workshop}
+    ports:
+      # Default hanya laptop ini. Server bersama: scripts/server_bersama.sh mengisi DB_BIND=0.0.0.0 setelah password diganti.
+      - "${DB_BIND:-127.0.0.1}:5433:5432"
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - erp-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp_admin -d erp"]
+      interval: 5s
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: erp-ai-ollama
+    profiles: ["ollama"]
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "8192"   # default 4096 terlalu pendek untuk tool + RAG
+    ports:
+      # Ollama tidak punya autentikasi (API-nya bisa menghapus model): default hanya laptop ini (OLLAMA_BIND).
+      - "${OLLAMA_BIND:-127.0.0.1}:11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  erp-data:
+  ollama-data:

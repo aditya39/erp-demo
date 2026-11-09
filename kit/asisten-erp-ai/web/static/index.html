@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nusantara Rasa ERP — Asisten AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/vendor/chart.umd.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">NR</div>
+      <div>
+        <div class="brand-name">Nusantara Rasa <span>ERP</span></div>
+        <div class="brand-sub" id="perusahaan">Data fiktif untuk workshop</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="net" id="net"><span class="dot"></span><span id="net-label">Online</span></div>
+      <label class="user-select">
+        <span>Masuk sebagai</span>
+        <select id="pengguna"></select>
+      </label>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="nav-item active"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Dashboard</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45C4.52 15.37 5.48 17 7 17h12v-2H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1z"/></svg>Penjualan</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/></svg>Persediaan</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M22 21V7l-6 4V7l-6 4V3H2v18h20zM6 17H4v-2h2v2zm0-4H4v-2h2v2zm4 4H8v-2h2v2zm0-4H8v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 4h-2v-2h2v2z"/></svg>Produksi &amp; HPP</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>Keuangan</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>Laporan</a>
+      <a class="nav-item"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>Pengaturan</a>
+      <div class="sidebar-foot">Versi contoh · workshop</div>
+    </nav>
+
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <div class="crumb">Penjualan / Dashboard</div>
+          <h1>Dashboard Penjualan</h1>
+        </div>
+        <div class="posisi" id="posisi"></div>
+      </div>
+      <section class="cards" id="kartu"></section>
+      <section class="panel">
+        <div class="panel-head">Omzet 12 bulan terakhir <span>(Rp juta)</span></div>
+        <div class="chart-box"><canvas id="grafik-omzet"></canvas></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">Penjualan per produk — <span id="judul-bulan"></span></div>
+        <table class="tabel" id="tabel-produk">
+          <thead><tr><th>Produk</th><th>Kategori</th><th class="r">Qty</th><th class="r">Nilai</th><th class="r">vs bulan lalu</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+
+    <aside class="chat">
+      <div class="chat-head">
+        <div class="chat-title">
+          <div class="spark">✦</div>
+          <div>
+            <div class="t1">Asisten AI</div>
+            <div class="t2">Tanya data penjualan, HPP, dan dokumen perusahaan</div>
+          </div>
+        </div>
+        <div class="chat-tools">
+          <div class="seg" id="mode">
+            <button data-mode="lokal" class="on">Lokal</button>
+            <button data-mode="cloud">Cloud</button>
+          </div>
+          <button class="icon-btn" id="menu-btn" title="Menu">⋯</button>
+          <div class="menu" id="menu">
+            <button data-aksi="bandingkan">Bandingkan lokal vs cloud</button>
+            <button data-aksi="rekaman">Putar rekaman (cadangan demo)</button>
+            <button data-aksi="bersihkan">Bersihkan percakapan</button>
+          </div>
+        </div>
+      </div>
+      <div class="model-line" id="model-line"></div>
+      <div class="messages" id="messages"></div>
+      <div class="chips" id="chips"></div>
+      <form class="composer" id="composer">
+        <textarea id="input" rows="2" placeholder="Tulis pertanyaan… (Enter untuk kirim)"></textarea>
+        <button type="submit" id="kirim" title="Kirim">➤</button>
+      </form>
+    </aside>
+  </div>
+
+  <div class="modal" id="modal-banding">
+    <div class="modal-box wide">
+      <div class="modal-head"><span>Bandingkan model lokal vs cloud</span><button class="icon-btn" data-tutup>✕</button></div>
+      <div class="banding-q" id="banding-q"></div>
+      <div class="banding">
+        <div class="kolom" id="kolom-lokal"></div>
+        <div class="kolom" id="kolom-cloud"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-rekaman">
+    <div class="modal-box">
+      <div class="modal-head"><span>Putar rekaman demo</span><button class="icon-btn" data-tutup>✕</button></div>
+      <div class="rekaman-list" id="rekaman-list"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+// Kerangka aplikasi: sidebar, topbar, konten, pencarian, notifikasi, login.
+.app {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr) auto;
+  height: 100vh;
+  overflow: hidden;
+  &.sidebar-ringkas { grid-template-columns: 60px minmax(0, 1fr) auto; }
+}
+
+// ---- sidebar ------------------------------------------------------------------
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--garis); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.ruang-kerja {
+  display: flex; align-items: center; gap: 10px; margin: 10px 10px 6px; padding: 6px; border-radius: 8px; color: inherit;
+  &:hover { background: var(--permukaan-3); }
+  .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--merek); color: #fff; display: grid; place-items: center; flex: none;
+    svg { width: 17px; height: 17px; } }
+  .ruang-teks { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; flex: 1;
+    b { font-size: 13.5px; font-weight: 600; white-space: nowrap; } small { font-size: 11.5px; color: var(--teks-3); white-space: nowrap; } }
+}
+.app-dark .ruang-kerja .logo { color: #06261f; }
+.cari-sidebar {
+  display: flex; align-items: center; gap: 8px; margin: 2px 12px 8px; height: 32px; padding: 0 8px; border-radius: var(--r-kecil);
+  border: 1px solid var(--garis); background: var(--permukaan); color: var(--teks-4); cursor: pointer; text-align: left; font-size: 13px;
+  box-shadow: var(--bayangan);
+  span { flex: 1; } &:hover { border-color: var(--garis-tegas); color: var(--teks-3); }
+}
+.nav { flex: 1; overflow-y: auto; padding: 2px 10px 12px; }
+.nav-grup { font-size: 11.5px; font-weight: 500; color: var(--teks-4); padding: 14px 8px 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 6px; margin: 1px 0; color: var(--teks-2);
+  font-size: 13.5px; font-weight: 450; position: relative;
+  .ikon { color: var(--teks-3); }
+  span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hitung { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px; font-weight: 600; display: grid; place-items: center;
+    background: var(--permukaan-3); color: var(--teks-3); &.penting { background: var(--merek); color: #fff; } }
+  &:hover { background: var(--permukaan-3); color: var(--teks); }
+  &.aktif { background: var(--permukaan); color: var(--teks); font-weight: 550; box-shadow: 0 0 0 1px var(--garis), var(--bayangan);
+    .ikon { color: var(--merek); } }
+}
+.sidebar-bawah { border-top: 1px solid var(--garis); padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+.pengguna-btn { display: flex; align-items: center; gap: 9px; padding: 6px; border-radius: 8px; border: 0; background: transparent; cursor: pointer;
+  text-align: left; width: 100%;
+  &:hover { background: var(--permukaan-3); }
+  .pengguna-teks { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25;
+    b { font-size: 13px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    small { font-size: 11.5px; color: var(--teks-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+  > .ikon { color: var(--teks-4); }
+}
+.sidebar-ringkas {
+  .ruang-kerja { justify-content: center; margin: 10px 8px 6px; .ruang-teks, > .ikon { display: none; } }
+  .cari-sidebar { justify-content: center; margin: 2px 12px 8px; padding: 0; span, kbd { display: none; } }
+  .nav-grup { height: 10px; padding: 6px 0 0; overflow: hidden; color: transparent; }
+  .nav-item { justify-content: center; padding: 0; span, .hitung { display: none; } }
+  .pengguna-btn { justify-content: center; .pengguna-teks, > .ikon { display: none; } }
+}
+
+// ---- area utama ------------------------------------------------------------------
+.utama { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.topbar { height: 48px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 16px 0 10px; border-bottom: 1px solid var(--garis);
+  background: var(--permukaan); }
+.remah { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; color: var(--teks-3);
+  a:hover { color: var(--teks); } .ikon { color: var(--teks-4); width: 14px; height: 14px; }
+  span:last-child { color: var(--teks); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.topbar-kanan { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.status-koneksi { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border-radius: 6px; font-size: 12px; color: var(--teks-3);
+  i { width: 7px; height: 7px; border-radius: 50%; background: var(--sukses); }
+  &.offline { background: var(--peringatan-bg); color: var(--peringatan); i { background: var(--peringatan); } }
+}
+.titik-notif { position: absolute; top: 2px; right: 0; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--bahaya);
+  color: #fff; font-size: 9px; font-weight: 700; line-height: 1; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--permukaan); }
+.btn-asisten { margin-left: 4px;
+  .ikon { color: var(--ai); }
+  &.aktif { background: var(--ai-bg); border-color: color-mix(in srgb, var(--ai) 30%, transparent); color: var(--teks); }
+}
+.konten { flex: 1; overflow-y: auto; min-height: 0; }
+.konten-isi { padding: 20px 28px 48px; max-width: 1560px; margin: 0 auto; }
+
+// ---- notifikasi --------------------------------------------------------------------
+.notif { width: 380px; margin: -4px; }
+.notif-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 10px; border-bottom: 1px solid var(--garis-halus); margin-bottom: 4px;
+  b { font-size: 13.5px; } span { font-size: 12px; color: var(--teks-3); } }
+.notif-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; padding: 9px 8px; border-radius: 7px; border: 0;
+  background: transparent; cursor: pointer;
+  &:hover { background: var(--permukaan-3); }
+  > .ikon { margin-top: 1px; color: var(--teks-3); }
+  &.warn > .ikon { color: var(--peringatan); } &.danger > .ikon { color: var(--bahaya); }
+  span { display: flex; flex-direction: column; min-width: 0; b { font-size: 13px; font-weight: 500; } small { color: var(--teks-3); font-size: 12px; } }
+}
+.notif-kosong { padding: 22px; text-align: center; color: var(--teks-3); }
+
+// ---- pencarian global ---------------------------------------------------------------
+.dialog-cari.p-dialog { border-radius: 12px; overflow: hidden; box-shadow: var(--bayangan-pop); }
+.dialog-cari .p-dialog-content { padding: 0 !important; }
+.cari-input { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--garis);
+  > .ikon { color: var(--teks-4); }
+  input { border: 0 !important; box-shadow: none !important; height: 50px !important; font-size: 15px !important; padding: 0 !important; background: transparent !important; } }
+.cari-hasil { max-height: 380px; overflow-y: auto; padding: 6px; }
+.cari-grup { font-size: 11.5px; font-weight: 500; color: var(--teks-4); padding: 8px 8px 4px; }
+.cari-baris { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 7px; border: 0; background: transparent; cursor: pointer; text-align: left;
+  > .ikon { color: var(--teks-3); }
+  &.pilih { background: var(--permukaan-3); }
+  .cari-teks { flex: 1; display: flex; align-items: baseline; gap: 8px; min-width: 0;
+    b { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    small { font-size: 12px; color: var(--teks-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+  .cari-enter { color: var(--teks-4); opacity: 0; } &.pilih .cari-enter { opacity: 1; }
+}
+.cari-kosong { padding: 22px; text-align: center; color: var(--teks-3); }
+.cari-kaki { display: flex; align-items: center; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--garis); background: var(--permukaan-2);
+  font-size: 12px; color: var(--teks-3); kbd { margin-right: 4px; }
+  .tanya-asisten { margin-left: auto; } }
+
+// ---- login --------------------------------------------------------------------------
+.login { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 40px 20px;
+  background: var(--latar); }
+.login-kartu { width: min(400px, 100%); background: var(--permukaan); border: 1px solid var(--garis); border-radius: 12px; padding: 28px 28px 24px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  .login-merek { display: flex; align-items: center; gap: 10px; margin-bottom: 22px;
+    .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--merek); color: #fff; display: grid; place-items: center; svg { width: 19px; height: 19px; } }
+    div { display: flex; flex-direction: column; line-height: 1.2; b { font-size: 14px; } small { font-size: 12px; color: var(--teks-3); } } }
+  h1 { font-size: 19px; margin-bottom: 4px; }
+  .sub { color: var(--teks-3); margin-bottom: 20px; }
+  form { display: flex; flex-direction: column; gap: 14px; }
+  input { height: 38px !important; }
+}
+.login-demo { width: min(400px, 100%); background: var(--permukaan); border: 1px solid var(--garis); border-radius: 12px; overflow: hidden;
+  .login-demo-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px; border-bottom: 1px solid var(--garis-halus);
+    b { font-size: 13px; } small { color: var(--teks-3); font-size: 12px; } }
+  button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 16px; border: 0; background: transparent; cursor: pointer; text-align: left;
+    border-bottom: 1px solid var(--garis-halus);
+    &:last-child { border-bottom: 0; } &:hover { background: var(--permukaan-2); }
+    > span { flex: 1; display: flex; flex-direction: column; line-height: 1.25; b { font-size: 13px; font-weight: 500; } small { font-size: 12px; color: var(--teks-3); } }
+    > .ikon { color: var(--teks-4); } }
+}
+.login-kaki { font-size: 12px; color: var(--teks-4); text-align: center; }
+.galat-form { display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: var(--r-kecil); font-size: 13px;
+  background: var(--bahaya-bg); color: var(--bahaya); .ikon { margin-top: 1px; } }
